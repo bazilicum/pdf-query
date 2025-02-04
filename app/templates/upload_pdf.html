@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Information Retriever</title>
+    <style>
+        /* Basic styling for clarity */
+        body {
+            font-family: Arial, sans-serif;
+            padding: 2rem;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        header, main {
+            text-align: left;
+            padding: 1rem 2rem;
+        }
+        header {
+            background-color: #333;
+            color: white;
+            padding: 1.5rem;
+            border-radius: 5px;
+        }
+        h1 {
+            font-size: 2rem;
+            margin: 0;
+        }
+        h2 {
+            margin-top: 2rem;
+            font-size: 1.5rem;
+        }
+        form {
+            max-width: 500px;
+            margin: 2rem auto;
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        form label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        form input[type="text"], form input[type="file"] {
+            width: 100%;
+            padding: 0.5rem;
+            margin-bottom: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        form button {
+            display: block;
+            width: 100%;
+            padding: 0.75rem;
+            background-color: #007bff;
+            border: none;
+            color: white;
+            font-size: 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        form button:hover {
+            background-color: #0056b3;
+        }
+        footer {
+            text-align: center;
+            margin-top: 2rem;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        /* Progress Bar Styles */
+        #progress-container {
+            max-width: 500px;
+            margin: 1rem auto;
+            display: none;
+        }
+        #progress-bar {
+            width: 100%;
+            background-color: #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        #progress-bar-fill {
+            height: 20px;
+            width: 0%;
+            background-color: #28a745;
+            transition: width 0.2s;
+        }
+        #progress-text {
+            text-align: center;
+            margin-top: 0.5rem;
+        }
+    </style>
+    <!-- Include Socket.IO -->
+    <script src="{{ url_for('static', filename='js/socket.io.min.js') }}"></script>
+</head>
+<body>
+    <header>
+        <h1>PDF Information Retriever</h1>
+    </header>
+    <main>
+        <h2>Upload PDF to project: {{ project_id }}</h2>
+        <form id="upload-form" enctype="multipart/form-data">
+            <input type="text" id="project_id" name="project_id" value="{{ project_id }}" readonly hidden required>
+            
+            <label for="file">Select PDF:</label>
+            <input type="file" id="file" name="file" accept="application/pdf" required>
+            
+            <!-- Changed from type="submit" to type="button" -->
+            <button type="button" id="upload-button">Upload</button>
+        </form>
+
+        <!-- Progress Bar -->
+        <div id="progress-container">
+            <div id="progress-bar">
+                <div id="progress-bar-fill"></div>
+            </div>
+            <div id="progress-text">0%</div>
+        </div>
+
+        <!-- Status Messages -->
+        <div id="status-message" style="max-width: 500px; margin: 1rem auto; text-align: center;"></div>
+    </main>
+
+    <footer>
+        &copy; 2024 PDF Information Retriever
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Initialize Socket.IO connection
+            const socket = io();
+
+            // Elements
+            const form = document.getElementById('upload-form');
+            const uploadButton = document.getElementById('upload-button');
+            const progressContainer = document.getElementById('progress-container');
+            const progressBarFill = document.getElementById('progress-bar-fill');
+            const progressText = document.getElementById('progress-text');
+            const statusMessage = document.getElementById('status-message');
+
+            // Disable the upload button until connected
+            uploadButton.disabled = true;
+            console.log('Upload button disabled initially.');
+
+            // Handle Socket.IO connection
+            socket.on('connect', () => {
+                uploadButton.disabled = false;  // Enable the upload button
+                statusMessage.textContent = 'Connected. Ready to upload.';
+            });
+
+            socket.on('disconnect', () => {
+                uploadButton.disabled = true;  // Disable the upload button
+                statusMessage.textContent = 'Disconnected from server.';
+            });
+
+            // Handle upload button click
+            uploadButton.addEventListener('click', () => {
+                console.log('Upload button clicked.');
+
+                const projectId = document.getElementById('project_id').value;
+                const fileInput = document.getElementById('file');
+                const file = fileInput.files[0];
+
+                if (!file) {
+                    alert('Please select a PDF file to upload.');
+                    console.log('No file selected. Aborting upload.');
+                    return;
+                }
+
+                // Check if Socket.IO is connected
+                if (!socket.connected) {
+                    alert('Not connected to the server. Please wait and try again.');
+                    console.log('Socket.IO not connected. Aborting upload.');
+                    return;
+                }
+
+                // Disable the button to prevent multiple submissions
+                uploadButton.disabled = true;
+
+                // Show the progress bar
+                progressContainer.style.display = 'block';
+                progressBarFill.style.width = '0%';
+                progressText.textContent = '0%';
+                statusMessage.textContent = 'Uploading...';
+
+                // Prepare the form data
+                const formData = new FormData();
+                formData.append('project_id', projectId);
+                formData.append('file', file);
+                formData.append('socket_id', socket.id);  // Ensure socket.id is sent
+
+                // Start the file upload via Fetch API
+                fetch('/upload_pdf', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        console.error('Server Error:', data.error);
+                        statusMessage.textContent = `Error: ${data.error}`;
+                        uploadButton.disabled = false;
+                    } else {
+                        statusMessage.textContent = 'Upload successful! Processing started.';
+                    }
+                })
+                .catch(error => {
+                    console.error('Fetch Error:', error);
+                    statusMessage.textContent = `Error: ${error}`;
+                    uploadButton.disabled = false;
+                });
+            });
+
+            // Listen for processing progress updates
+            socket.on('status', (data) => {
+                statusMessage.textContent = data.message;
+            });
+
+            // Listen for processing progress updates
+            socket.on('processing_progress', (data) => {
+                const progress = Math.min(data.progress, 100);
+                progressBarFill.style.width = `${progress}%`;
+                progressText.textContent = `Processing: ${Math.round(progress)}% completed.`;
+            });
+
+            // Listen for upload progress updates
+            socket.on('upload_progress', (data) => {
+                console.log('Upload Progress:', data.progress);
+                const progress = Math.min(data.progress, 100);
+                progressBarFill.style.width = `${progress}%`;
+                progressText.textContent = `Uploading: ${Math.round(progress)}% completed.`;
+            });
+
+            // Listen for completion
+            socket.on('processing_complete', (data) => {
+                console.log('Processing Complete:', data.message);
+                progressBarFill.style.width = '100%';
+                progressText.textContent = '100%';
+                statusMessage.textContent = data.message;
+                uploadButton.disabled = false;
+
+                // Redirect to index page after a short delay (e.g., 2 seconds)
+                setTimeout(() => {
+                    window.location.href = "{{ url_for('home') }}";  // Adjust 'index' if your route name differs
+                }, 2000);  // 2000 milliseconds = 2 seconds                
+            });
+
+            // Listen for errors
+            socket.on('processing_error', (data) => {
+                console.error('Processing Error:', data.message);
+                progressContainer.style.display = 'none';
+                statusMessage.textContent = `Error: ${data.message}`;
+                uploadButton.disabled = false;
+            });
+        });
+    </script>
+</body>
+</html>

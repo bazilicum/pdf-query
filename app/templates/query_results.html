@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Query Results</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #343a40;
+            color: white;
+            padding: 1.5rem;
+            text-align: left;
+        }
+        main {
+            padding: 2rem;
+        }
+        .back-button {
+            display: inline-block;
+            margin-bottom: 20px;
+            padding: 10px 15px;
+            font-size: 1rem;
+            color: white;
+            background-color: #6c757d;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            transition: background-color 0.3s;
+        }
+        .back-button:hover {
+            background-color: #5a6268;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .answer-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f0f8ff;
+            border-radius: 5px;
+        }
+        .formatted-answer {
+        font-family: Arial, sans-serif;
+        font-size: 1rem;
+        line-height: 1.6;
+        background-color: #f0f8ff;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+        color: #333;
+        }
+        .formatted-answer .citation {
+            font-size: 0.9rem;
+            color: #555;
+            font-style: italic;
+        }
+        .formatted-answer br {
+            line-height: 1.5;
+        }       
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Query Results</h1>
+    </header>
+    <main>
+        <div class="answer-section">
+            <h3>Answer:</h3>
+            <p>
+                {{ answer | replace("(", "<span class='citation'>(") | replace(")", ")</span>") | replace("</span>.", "</span>.<br>") | safe }}
+            </p>
+        </div>
+        <a href="/" class="back-button"><i class="fas fa-arrow-left"></i> Back to Projects</a>
+        <table>
+            <thead>
+                <tr>
+                    <th>PDF Name</th>
+                    <th>Page</th>
+                    <th>Chunk</th>
+                    <th>Relevance Score</th>
+                    <th>Content</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for result in results %}
+                <tr>
+                    <td>{{ result.chunk.pdf_name }}</td>
+                    <td>{{ result.chunk.page }}</td>
+                    <td>{{ result.chunk.chunk_id }}</td>
+                    <td>{{ result.score|round(3) }}</td>
+                    <td>{{ result.chunk.text }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </main>
+</body>
+</html>

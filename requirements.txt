@@ -1,0 +1,9 @@
+flask
+flask_socketio
+pdfplumber
+nltk
+sentence_transformers
+faiss-cpu
+qdrant_client
+openai
+

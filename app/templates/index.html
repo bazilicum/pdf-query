@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projects</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #343a40;
+            color: white;
+            padding: 1.5rem;
+            text-align: left;
+        }
+        main {
+            padding: 2rem;
+            text-align: left;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            background: white;
+            margin: 1rem auto;
+            padding: 1rem;
+            border-radius: 8px;
+            max-width: 600px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        li:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+        .project-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        .actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .actions button {
+            padding: 0.5rem;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #007bff;
+            color: white;
+        }
+        .actions button i {
+            margin-right: 0.5rem;
+        }
+        .actions button:hover {
+            background-color: #0056b3;
+        }
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 400px;
+        }
+        .modal-content h2 {
+            margin-bottom: 1rem;
+        }
+        .modal-content button {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .modal-content button:hover {
+            background-color: #0056b3;
+        }
+        .add-project {
+            margin: 2rem 0;
+            max-width: 600px;
+            text-align: left;
+            display: flex;
+            align-items: center;
+        }
+        .add-project input {
+            padding: 0.5rem;
+            font-size: 1rem;
+            margin-right: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            flex: 1;
+        }
+        .add-project button {
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+        }
+        .add-project button i {
+            margin-right: 0.5rem;
+        }
+        .add-project button:hover {
+            background-color: #5a6268;
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+    <header>
+        <h1>Projects</h1>
+    </header>
+    <main>
+        <div class="add-project">
+            <input type="text" id="new-project-name" placeholder="Enter new project name">
+            <button id="add-project-button"><i class="fas fa-plus"></i>Add Project</button>
+        </div>
+        <h2>Available Projects</h2>
+        <ul>
+            {% if projects and projects|length > 0 %}
+                {% for project in projects %}
+                <li class="project-item">
+                    <div class="project-name">{{ project.name }}</div>
+                    <div class="actions">
+                        <form action="/upload_pdf" method="get">
+                            <input type="hidden" name="project_id" value="{{ project.name }}">
+                            <button type="submit"><i class="fas fa-upload"></i>Upload</button>
+                        </form>
+                        <form action="/query_project" method="get">
+                            <input type="hidden" name="project_id" value="{{ project.name }}">
+                            <button type="submit"><i class="fas fa-search"></i>Query</button>
+                        </form>
+                        <form action="/delete_project" method="post" class="delete-form">
+                            <input type="hidden" name="project_id" value="{{ project.name }}">
+                            <button type="button" class="delete-button" data-project-id="{{ project.name }}"><i class="fas fa-trash"></i>Delete</button>
+                        </form>
+                    </div>
+                </li>
+                {% endfor %}
+            {% else %}
+                <p>No projects available. Please upload a new project.</p>
+            {% endif %}
+        </ul>
+    </main>
+    
+    <!-- Modal -->
+    <div class="modal" id="status-modal">
+        <div class="modal-content">
+            <h2 id="modal-title">Status</h2>
+            <p id="modal-message"></p>
+            <button id="close-modal">Close</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const deleteButtons = document.querySelectorAll('.delete-button');
+            const modal = document.getElementById('status-modal');
+            const modalTitle = document.getElementById('modal-title');
+            const modalMessage = document.getElementById('modal-message');
+            const closeModal = document.getElementById('close-modal');
+
+            deleteButtons.forEach(button => {
+                button.addEventListener('click', async () => {
+                    const projectId = button.dataset.projectId;
+
+                    try {
+                        const response = await fetch('/delete_project', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            body: `project_id=${projectId}`,
+                        });
+
+                        const data = await response.json();
+
+                        if (response.ok) {
+                            modalTitle.textContent = 'Success';
+                            modalMessage.textContent = data.message;
+                        } else {
+                            modalTitle.textContent = 'Error';
+                            modalMessage.textContent = data.error || 'An error occurred.';
+                        }
+
+                        modal.style.display = 'flex';
+                    } catch (error) {
+                        modalTitle.textContent = 'Error';
+                        modalMessage.textContent = 'An unexpected error occurred.';
+                        modal.style.display = 'flex';
+                    }
+                });
+            });
+
+            closeModal.addEventListener('click', () => {
+                modal.style.display = 'none';
+                window.location.reload();
+            });
+
+            // Add new project functionality
+            const addProjectButton = document.getElementById('add-project-button');
+            addProjectButton.addEventListener('click', async () => {
+                const projectNameInput = document.getElementById('new-project-name');
+                const projectName = projectNameInput.value.trim();
+
+                if (!projectName) {
+                    alert('Project name cannot be empty.');
+                    return;
+                }
+
+                try {
+                    const response = await fetch('/add_project', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: `project_id=${projectName}`,
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        modalTitle.textContent = 'Success';
+                        modalMessage.textContent = data.message;
+                        modal.style.display = 'flex';
+                    } else {
+                        modalTitle.textContent = 'Error';
+                        modalMessage.textContent = data.error || 'An error occurred.';
+                        modal.style.display = 'flex';
+                    }
+                } catch (error) {
+                    modalTitle.textContent = 'Error';
+                    modalMessage.textContent = 'An unexpected error occurred.';
+                    modal.style.display = 'flex';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
