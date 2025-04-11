@@ -1,6 +1,6 @@
 # 📄 PDF Query
 
-This project processes and retrieves information from PDF files using Python. It leverages **Qdrant** as a vector database for similarity searches and employs a **Retrieval-Augmented Generation** (RAG).
+This project processes and retrieves information from PDF file or PDF collection. It leverages **Qdrant** as a vector database for similarity searches and employs a **Retrieval-Augmented Generation** (RAG).
 
 The system first chunks and encodes text excerpts from PDFs using a sentence transformer, then performs a similarity search based on the user’s query. The retrieved excerpts are then passed to an LLM, which generates a cited response.
 
